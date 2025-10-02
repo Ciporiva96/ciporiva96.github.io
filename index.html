@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>3D Number (with Fallback)</title>
+    <title>3D Number</title>
     <style>
       body {
         margin: 0;
@@ -21,6 +21,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.152/examples/js/controls/OrbitControls.js"></script>
 
     <script>
+      // Scene setup
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(
         60,
@@ -36,37 +37,31 @@
       renderer.shadowMap.enabled = true;
       document.body.appendChild(renderer.domElement);
 
-      // Lights
+      // Lighting
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
       scene.add(ambientLight);
 
       const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
       directionalLight.position.set(3, 5, 2);
       directionalLight.castShadow = true;
+      directionalLight.shadow.mapSize.width = 2048;
+      directionalLight.shadow.mapSize.height = 2048;
       scene.add(directionalLight);
 
-      // Ground
-      const plane = new THREE.Mesh(
-        new THREE.PlaneGeometry(100, 100),
-        new THREE.ShadowMaterial({ opacity: 0.3 })
-      );
+      // Ground plane to catch shadow
+      const planeGeometry = new THREE.PlaneGeometry(100, 100);
+      const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.3 });
+      const plane = new THREE.Mesh(planeGeometry, planeMaterial);
       plane.rotation.x = -Math.PI / 2;
       plane.position.y = -1.5;
       plane.receiveShadow = true;
       scene.add(plane);
 
-      // Controls
-      const controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.05;
-      controls.enablePan = false;
-
-      // Try to load font
+      // Load font and create 3D number
       const loader = new THREE.FontLoader();
       loader.load(
         "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
         (font) => {
-          // ✅ Font loaded — make 3D number
           const geometry = new THREE.TextGeometry("3", {
             font,
             size: 2,
@@ -74,51 +69,44 @@
             bevelEnabled: true,
             bevelThickness: 0.1,
             bevelSize: 0.08,
+            bevelOffset: 0,
             bevelSegments: 8,
           });
-          geometry.center();
+
+          geometry.center(); // center text in scene
 
           const material = new THREE.MeshPhysicalMaterial({
             color: 0x00ffc8,
             metalness: 0.6,
             roughness: 0.2,
             clearcoat: 0.8,
+            reflectivity: 1,
           });
 
           const mesh = new THREE.Mesh(geometry, material);
           mesh.castShadow = true;
           scene.add(mesh);
 
-          startAnimation(mesh);
-        },
-        undefined,
-        () => {
-          // ❌ Font failed — make fallback cube
-          const cubeGeometry = new THREE.BoxGeometry(2, 2, 2);
-          const cubeMaterial = new THREE.MeshStandardMaterial({
-            color: 0x00ffc8,
-            metalness: 0.6,
-            roughness: 0.3,
-          });
-          const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-          cube.castShadow = true;
-          scene.add(cube);
+          // Animation loop
+          const controls = new THREE.OrbitControls(camera, renderer.domElement);
+          controls.enableDamping = true;
+          controls.dampingFactor = 0.05;
+          controls.enablePan = false;
 
-          startAnimation(cube);
+          function animate() {
+            requestAnimationFrame(animate);
+
+            // gentle auto-rotation
+            mesh.rotation.y += 0.003;
+
+            controls.update();
+            renderer.render(scene, camera);
+          }
+          animate();
         }
       );
 
-      // Animation loop
-      function startAnimation(object) {
-        function animate() {
-          requestAnimationFrame(animate);
-          object.rotation.y += 0.003;
-          controls.update();
-          renderer.render(scene, camera);
-        }
-        animate();
-      }
-
+      // Responsive resize
       window.addEventListener("resize", () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
