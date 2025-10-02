@@ -1,217 +1,129 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>1234</title>
+  <head>
+    <meta charset="UTF-8" />
+    <title>3D Number (with Fallback)</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body {
-            width: 100%;
-            height: 100vh;
-            overflow: hidden;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            touch-action: none;
-            perspective: 1000px;
-        }
-
-        #number {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            font-size: 80px;
-            font-weight: 700;
-            color: white;
-            cursor: grab;
-            user-select: none;
-            letter-spacing: -0.02em;
-            transform-origin: center center;
-            transform-style: preserve-3d;
-        }
-
-        #number:active {
-            cursor: grabbing;
-        }
-
-        .digit {
-            display: inline-block;
-            transform-style: preserve-3d;
-            position: relative;
-        }
-
-        .digit span {
-            position: absolute;
-            top: 0;
-            left: 0;
-            display: block;
-        }
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+        height: 100vh;
+      }
+      canvas {
+        display: block;
+      }
     </style>
-</head>
-<body>
-    <div id="number"></div>
+  </head>
+  <body>
+    <!-- Three.js and OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.152/examples/js/controls/OrbitControls.js"></script>
 
     <script>
-        const numberEl = document.getElementById('number');
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        60,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      camera.position.set(0, 1.5, 5);
 
-        // Create 3D extruded number
-        function create3DNumber() {
-            const digits = ['1', '2', '3', '4'];
-            const depth = 40; // depth of extrusion
-            
-            digits.forEach(digit => {
-                const digitEl = document.createElement('div');
-                digitEl.className = 'digit';
-                digitEl.textContent = digit;
-                
-                // Create depth layers
-                for (let i = 0; i < depth; i++) {
-                    const layer = document.createElement('span');
-                    layer.textContent = digit;
-                    const brightness = 1 - (i / depth) * 0.7;
-                    layer.style.color = `rgba(255, 255, 255, ${brightness})`;
-                    layer.style.transform = `translateZ(${-i}px)`;
-                    layer.style.textShadow = i === 0 ? '0 0 40px rgba(255,255,255,0.5)' : 'none';
-                    digitEl.appendChild(layer);
-                }
-                
-                numberEl.appendChild(digitEl);
-            });
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.shadowMap.enabled = true;
+      document.body.appendChild(renderer.domElement);
+
+      // Lights
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      directionalLight.position.set(3, 5, 2);
+      directionalLight.castShadow = true;
+      scene.add(directionalLight);
+
+      // Ground
+      const plane = new THREE.Mesh(
+        new THREE.PlaneGeometry(100, 100),
+        new THREE.ShadowMaterial({ opacity: 0.3 })
+      );
+      plane.rotation.x = -Math.PI / 2;
+      plane.position.y = -1.5;
+      plane.receiveShadow = true;
+      scene.add(plane);
+
+      // Controls
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.enablePan = false;
+
+      // Try to load font
+      const loader = new THREE.FontLoader();
+      loader.load(
+        "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
+        (font) => {
+          // ✅ Font loaded — make 3D number
+          const geometry = new THREE.TextGeometry("3", {
+            font,
+            size: 2,
+            height: 0.5,
+            bevelEnabled: true,
+            bevelThickness: 0.1,
+            bevelSize: 0.08,
+            bevelSegments: 8,
+          });
+          geometry.center();
+
+          const material = new THREE.MeshPhysicalMaterial({
+            color: 0x00ffc8,
+            metalness: 0.6,
+            roughness: 0.2,
+            clearcoat: 0.8,
+          });
+
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.castShadow = true;
+          scene.add(mesh);
+
+          startAnimation(mesh);
+        },
+        undefined,
+        () => {
+          // ❌ Font failed — make fallback cube
+          const cubeGeometry = new THREE.BoxGeometry(2, 2, 2);
+          const cubeMaterial = new THREE.MeshStandardMaterial({
+            color: 0x00ffc8,
+            metalness: 0.6,
+            roughness: 0.3,
+          });
+          const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+          cube.castShadow = true;
+          scene.add(cube);
+
+          startAnimation(cube);
         }
+      );
 
-        create3DNumber();
-
-        let width = window.innerWidth;
-        let height = window.innerHeight;
-
-        // Physics state
-        let number = {
-            rotationX: 0,
-            rotationY: 0,
-            rotationZ: 0,
-            rotationVelX: 0,
-            rotationVelY: 0,
-            rotationVelZ: 0,
-            scale: 1,
-            touchX: 0,
-            touchY: 0,
-            isDragging: false
-        };
-
-        // Physics constants
-        const ROTATION_DAMPING = 0.88;
-        const ROTATION_SPRING = 0.04;
-        const TILT_AMOUNT_X = 50; // max up/down tilt in degrees
-        const TILT_AMOUNT_Y = 360; // max sideways tilt in degrees
-
-        // Touch/Mouse handlers
-        function getPointerPos(e) {
-            const touch = e.touches ? e.touches[0] : e;
-            return { x: touch.clientX, y: touch.clientY };
-        }
-
-        function startDrag(e) {
-            e.preventDefault();
-            number.isDragging = true;
-        }
-
-        function drag(e) {
-            if (!number.isDragging) return;
-            e.preventDefault();
-            
-            const pos = getPointerPos(e);
-            number.touchX = pos.x;
-            number.touchY = pos.y;
-        }
-
-        function endDrag(e) {
-            if (!number.isDragging) return;
-            e.preventDefault();
-            number.isDragging = false;
-        }
-
-        numberEl.addEventListener('mousedown', startDrag);
-        numberEl.addEventListener('touchstart', startDrag);
-        window.addEventListener('mousemove', drag);
-        window.addEventListener('touchmove', drag, { passive: false });
-        window.addEventListener('mouseup', endDrag);
-        window.addEventListener('touchend', endDrag);
-
-        // Physics update
-        function updatePhysics() {
-            let targetRotX = 0;
-            let targetRotY = 0;
-            
-            if (number.isDragging) {
-                // Calculate tilt based on touch position
-                const centerX = width / 2;
-                const centerY = height / 2;
-                
-                // Normalize touch position to -1 to 1
-                const normX = (number.touchX - centerX) / (width / 2);
-                const normY = (number.touchY - centerY) / (height / 2);
-                
-                // Apply tilt - Y rotation for horizontal (360°), X rotation for vertical (50°)
-                targetRotY = normX * TILT_AMOUNT_Y;
-                targetRotX = -normY * TILT_AMOUNT_X;
-            }
-            
-            // Spring towards target rotation (or back to 0 if not touching)
-            number.rotationVelX += (targetRotX - number.rotationX) * ROTATION_SPRING;
-            number.rotationVelY += (targetRotY - number.rotationY) * ROTATION_SPRING;
-            number.rotationVelZ += (0 - number.rotationZ) * ROTATION_SPRING;
-            
-            // Apply rotation velocities
-            number.rotationVelX *= ROTATION_DAMPING;
-            number.rotationVelY *= ROTATION_DAMPING;
-            number.rotationVelZ *= ROTATION_DAMPING;
-            
-            number.rotationX += number.rotationVelX;
-            number.rotationY += number.rotationVelY;
-            number.rotationZ += number.rotationVelZ;
-        }
-
-        // Render
-        function render() {
-            // Update number element - stays centered, only rotates
-            numberEl.style.transform = `
-                translate(-50%, -50%)
-                rotateX(${number.rotationX}deg)
-                rotateY(${number.rotationY}deg)
-                rotateZ(${number.rotationZ}deg)
-            `;
-            
-            // Dynamic shadow based on rotation
-            const shadowX = Math.sin(number.rotationY * Math.PI / 180) * 30;
-            const shadowY = -Math.sin(number.rotationX * Math.PI / 180) * 30;
-            const shadowBlur = 60 + Math.abs(number.rotationX) * 0.8 + Math.abs(number.rotationY) * 0.8;
-            
-            numberEl.style.filter = `drop-shadow(${shadowX}px ${shadowY}px ${shadowBlur}px rgba(0,0,0,0.5))`;
-        }
-
-        // Animation loop
+      // Animation loop
+      function startAnimation(object) {
         function animate() {
-            updatePhysics();
-            render();
-            requestAnimationFrame(animate);
+          requestAnimationFrame(animate);
+          object.rotation.y += 0.003;
+          controls.update();
+          renderer.render(scene, camera);
         }
-
-        // Handle resize
-        window.addEventListener('resize', () => {
-            width = window.innerWidth;
-            height = window.innerHeight;
-        });
-
-        // Start animation
         animate();
+      }
+
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
     </script>
-</body>
+  </body>
 </html>
