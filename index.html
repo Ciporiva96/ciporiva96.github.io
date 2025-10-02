@@ -28,7 +28,7 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            font-size: 120px;
+            font-size: 80px;
             font-weight: 700;
             color: white;
             cursor: grab;
@@ -109,7 +109,8 @@
         // Physics constants
         const ROTATION_DAMPING = 0.88;
         const ROTATION_SPRING = 0.04;
-        const TILT_AMOUNT = 25; // max tilt in degrees
+        const TILT_AMOUNT_X = 50; // max up/down tilt in degrees
+        const TILT_AMOUNT_Y = 360; // max sideways tilt in degrees
 
         // Touch/Mouse handlers
         function getPointerPos(e) {
@@ -158,9 +159,9 @@
                 const normX = (number.touchX - centerX) / (width / 2);
                 const normY = (number.touchY - centerY) / (height / 2);
                 
-                // Apply tilt - Y rotation for horizontal, X rotation for vertical
-                targetRotY = normX * TILT_AMOUNT;
-                targetRotX = -normY * TILT_AMOUNT;
+                // Apply tilt - Y rotation for horizontal (360°), X rotation for vertical (50°)
+                targetRotY = normX * TILT_AMOUNT_Y;
+                targetRotX = -normY * TILT_AMOUNT_X;
             }
             
             // Spring towards target rotation (or back to 0 if not touching)
